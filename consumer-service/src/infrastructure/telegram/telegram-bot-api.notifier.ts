@@ -1,18 +1,14 @@
 import { Injectable } from '@nestjs/common';
-
-export interface NotificationEvent {
-  eventId: string;
-  message: string;
-  chatId?: string;
-  createdAt: string;
-}
+import type { TelegramNotifier } from '../../application/ports/telegram-notifier.port';
+import type { NotificationRequestedEvent } from '../../domain/events/notification-requested.event';
 
 @Injectable()
-export class TelegramService {
+export class TelegramBotApiNotifier implements TelegramNotifier {
   private readonly token = process.env.TELEGRAM_BOT_TOKEN ?? '';
+  private readonly defaultChatId = process.env.TELEGRAM_CHAT_ID ?? '';
 
-  async send(event: NotificationEvent): Promise<void> {
-    const chatId = event.chatId;
+  async send(event: NotificationRequestedEvent): Promise<void> {
+    const chatId = event.payload.chatId ?? this.defaultChatId;
 
     if (!this.token || !chatId) {
       throw new Error('TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID are required');
@@ -25,7 +21,7 @@ export class TelegramService {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chat_id: chatId,
-          text: event.message,
+          text: event.payload.message,
         }),
       },
     );

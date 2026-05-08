@@ -1,9 +1,18 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { RabbitmqService } from './rabbitmq.service';
+import { EVENT_PUBLISHER } from './application/ports/event-publisher.port';
+import { PublishNotificationUseCase } from './application/use-cases/publish-notification.use-case';
+import { RabbitmqPublisher } from './infrastructure/rabbitmq/rabbitmq.publisher';
+import { NotificationsController } from './presentation/http/notifications.controller';
 
 @Module({
-  controllers: [AppController],
-  providers: [RabbitmqService],
+  controllers: [NotificationsController],
+  providers: [
+    PublishNotificationUseCase,
+    RabbitmqPublisher,
+    {
+      provide: EVENT_PUBLISHER,
+      useExisting: RabbitmqPublisher,
+    },
+  ],
 })
 export class AppModule {}

@@ -5,7 +5,8 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { Channel, ChannelModel, ConsumeMessage, connect } from 'amqplib';
-import { NotificationEvent, TelegramService } from './telegram.service';
+import { ProcessNotificationUseCase } from '../../application/use-cases/process-notification.use-case';
+import { parseNotificationRequestedEvent } from '../../domain/events/notification-requested.event';
 
 @Injectable()
 export class RabbitmqConsumer implements OnModuleInit, OnModuleDestroy {
@@ -18,7 +19,7 @@ export class RabbitmqConsumer implements OnModuleInit, OnModuleDestroy {
   private readonly queue =
     process.env.RABBITMQ_QUEUE ?? 'telegram.notifications';
 
-  constructor(private readonly telegram: TelegramService) {}
+  constructor(private readonly useCase: ProcessNotificationUseCase) {}
 
   async onModuleInit(): Promise<void> {
     this.connection = await connect(this.url);
@@ -44,13 +45,12 @@ export class RabbitmqConsumer implements OnModuleInit, OnModuleDestroy {
     }
 
     try {
-      const event = JSON.parse(
-        message.content.toString('utf8'),
-      ) as NotificationEvent;
+      const event = parseNotificationRequestedEvent(
+        JSON.parse(message.content.toString('utf8')),
+      );
 
-      await this.telegram.send(event);
+      await this.useCase.execute(event);
       this.channel.ack(message);
-      this.logger.log(`Message sent to Telegram: ${event.eventId}`);
     } catch (error) {
       this.logger.error(
         'Message processing failed',

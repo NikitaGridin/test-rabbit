@@ -1,6 +1,6 @@
-import { TelegramService } from './telegram.service';
+import { TelegramBotApiNotifier } from './telegram-bot-api.notifier';
 
-describe('TelegramService', () => {
+describe('TelegramBotApiNotifier', () => {
   const originalFetch = global.fetch;
   const originalEnv = process.env;
 
@@ -20,10 +20,11 @@ describe('TelegramService', () => {
   it('sends message to Telegram API', async () => {
     global.fetch = jest.fn().mockResolvedValue({ ok: true });
 
-    await new TelegramService().send({
-      eventId: '1',
-      message: 'Hello',
+    await new TelegramBotApiNotifier().send({
+      eventId: 'event-id',
+      type: 'notification.requested',
       createdAt: '2026-05-08T00:00:00.000Z',
+      payload: { message: 'Hello' },
     });
 
     expect(global.fetch).toHaveBeenCalledWith(

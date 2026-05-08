@@ -1,15 +1,10 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { ChannelModel, ConfirmChannel, connect } from 'amqplib';
-
-export interface NotificationEvent {
-  eventId: string;
-  message: string;
-  chatId?: string;
-  createdAt: string;
-}
+import type { EventPublisher } from '../../application/ports/event-publisher.port';
+import type { NotificationRequestedEvent } from '../../domain/events/notification-requested.event';
 
 @Injectable()
-export class RabbitmqService implements OnModuleDestroy {
+export class RabbitmqPublisher implements EventPublisher, OnModuleDestroy {
   private connection?: ChannelModel;
   private channel?: ConfirmChannel;
 
@@ -18,7 +13,7 @@ export class RabbitmqService implements OnModuleDestroy {
   private readonly queue =
     process.env.RABBITMQ_QUEUE ?? 'telegram.notifications';
 
-  async publish(event: NotificationEvent): Promise<void> {
+  async publish(event: NotificationRequestedEvent): Promise<void> {
     const channel = await this.getChannel();
     const payload = Buffer.from(JSON.stringify(event));
 
@@ -30,6 +25,7 @@ export class RabbitmqService implements OnModuleDestroy {
           contentType: 'application/json',
           persistent: true,
           messageId: event.eventId,
+          type: event.type,
         },
         (error) =>
           error

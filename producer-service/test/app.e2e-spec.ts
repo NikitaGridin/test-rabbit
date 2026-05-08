@@ -1,19 +1,19 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { AppController } from '../src/app.controller';
-import { RabbitmqService } from '../src/rabbitmq.service';
+import { PublishNotificationUseCase } from '../src/application/use-cases/publish-notification.use-case';
+import { NotificationsController } from '../src/presentation/http/notifications.controller';
 
 describe('ProducerService (e2e)', () => {
   let app: INestApplication;
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      controllers: [AppController],
+      controllers: [NotificationsController],
       providers: [
         {
-          provide: RabbitmqService,
+          provide: PublishNotificationUseCase,
           useValue: {
-            publish: jest.fn().mockResolvedValue(undefined),
+            execute: jest.fn().mockResolvedValue({ eventId: 'event-id' }),
           },
         },
       ],
@@ -28,10 +28,10 @@ describe('ProducerService (e2e)', () => {
   });
 
   it('publishes a notification through Nest application context', async () => {
-    const controller = app.get(AppController);
+    const controller = app.get(NotificationsController);
 
-    const response = await controller.send({ message: 'Hello' });
-
-    expect(typeof response.eventId).toBe('string');
+    await expect(controller.send({ message: 'Hello' })).resolves.toEqual({
+      eventId: 'event-id',
+    });
   });
 });

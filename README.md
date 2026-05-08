@@ -1,9 +1,34 @@
-# Simple Nest.js RabbitMQ Telegram Example
+# Nest.js RabbitMQ Telegram Microservices
 
-В проекте два отдельных Nest.js сервиса.
+В проекте два отдельных Nest.js сервиса с clean architecture границами.
 
-- `producer-service`: ручка `POST /notifications` принимает `message`, создаёт `eventId` и кладёт JSON в RabbitMQ queue.
-- `consumer-service`: слушает эту RabbitMQ queue, отправляет `message` в Telegram через Bot API и делает `ack`; при ошибке делает `nack` с повторной доставкой.
+- `producer-service`: `POST /notifications` принимает `message`, use case создаёт доменное событие с `eventId`, RabbitMQ adapter публикует JSON в queue.
+- `consumer-service`: RabbitMQ adapter читает queue, валидирует доменное событие, use case проверяет идемпотентность и отправляет уведомление через Telegram adapter.
+
+## Архитектура
+
+Слои:
+
+- `domain`: доменные события и их валидация.
+- `application`: use cases и порты интерфейсов.
+- `infrastructure`: RabbitMQ, Telegram Bot API, idempotency store.
+- `presentation`: HTTP controllers и DTO.
+
+Основной поток:
+
+```text
+Producer HTTP -> PublishNotificationUseCase -> EventPublisher port -> RabbitMQ
+RabbitMQ -> RabbitmqConsumer -> ProcessNotificationUseCase -> TelegramNotifier port -> Telegram API
+```
+
+RabbitMQ:
+
+- Queue: `telegram.notifications`
+- Сообщения persistent.
+- Consumer использует `prefetch(1)`.
+- `ack` выполняется только после успешного use case.
+- При ошибке выполняется `nack` с повторной доставкой.
+- Идемпотентность реализована через `eventId` в `InMemoryIdempotencyStore`. Для production этот adapter можно заменить на Redis/PostgreSQL без изменения use case.
 
 ## Запуск
 
